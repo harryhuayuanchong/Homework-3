@@ -116,14 +116,25 @@ class RiskParityPortfolio:
     def calculate_weights(self):
         # Get the assets by excluding the specified column
         assets = df.columns[df.columns != self.exclude]
-
+        
         # Calculate the portfolio weights
         self.portfolio_weights = pd.DataFrame(index=df.index, columns=df.columns)
 
         """
         TODO: Complete Task 2 Below
         """
+        # Calculate daily returns for the assets
+        df_new = df.pct_change().dropna()
 
+        # Compute rolling volatility of asset returns
+        rolling_vol = df_new[assets].shift(1).rolling(window=self.lookback).std()
+
+        # Compute inverse of volatilities
+        inverse_vol = 1 / rolling_vol
+
+        # Normalize inverse volatilities to get weights
+        inv_vol_sum = inverse_vol.sum(axis=1)
+        self.portfolio_weights[assets] = inverse_vol.div(inv_vol_sum, axis=0)
         """
         TODO: Complete Task 2 Above
         """
@@ -195,14 +206,18 @@ class MeanVariancePortfolio:
                 """
                 TODO: Complete Task 3 Below
                 """
-
-                # Sample Code: Initialize Decision w and the Objective
-                # NOTE: You can modify the following code
-                w = model.addMVar(n, name="w", ub=1)
-                model.setObjective(w.sum(), gp.GRB.MAXIMIZE)
-
+                # Decision variable: portfolio weights
+                w = model.addMVar(n, lb=0, ub=1, name="w")
+                
+                # Objective function
+                p_return = mu @ w
+                p_risk = gamma / 2 * w @ Sigma @ w
+                model.setObjective(p_return - p_risk, gp.GRB.MAXIMIZE)
+                
+                # Constraint: sum of weights equals to 1
+                model.addConstr(w.sum() == 1, name="budget")
                 """
-                TODO: Complete Task 3 Below
+                TODO: Complete Task 3 Above
                 """
                 model.optimize()
 
