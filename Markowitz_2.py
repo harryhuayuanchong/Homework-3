@@ -55,12 +55,12 @@ class MyPortfolio:
     NOTE: You can modify the initialization function
     """
 
-    def __init__(self, price, exclude, lookback=50, gamma=0):
+    def __init__(self, price, exclude, short_window=5, long_window=10):
         self.price = price
         self.returns = price.pct_change().fillna(0)
         self.exclude = exclude
-        self.lookback = lookback
-        self.gamma = gamma
+        self.short_window = short_window
+        self.long_window = long_window
 
     def calculate_weights(self):
         # Get the assets by excluding the specified column
@@ -70,11 +70,20 @@ class MyPortfolio:
         self.portfolio_weights = pd.DataFrame(
             index=self.price.index, columns=self.price.columns
         )
-
+        
         """
         TODO: Complete Task 4 Below
         """
+        # Calculate short-term and long-term moving averages
+        short_ma = self.price[assets].rolling(window=self.short_window).mean()
+        long_ma = self.price[assets].rolling(window=self.long_window).mean()
+        
+        # Generate trading signals: Buy when the short-term moving average is higher than the long-term moving average
+        trade_signal = pd.DataFrame(index=self.price.index, columns=assets)
+        trade_signal[assets] = (short_ma > long_ma).astype(int)
 
+        # Calculate weights: Distribute the signals evenly across all assets
+        self.portfolio_weights[assets] = trade_signal[assets].div(trade_signal[assets].sum(axis=1), axis=0)
         """
         TODO: Complete Task 4 Above
         """
